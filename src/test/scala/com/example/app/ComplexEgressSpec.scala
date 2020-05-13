@@ -34,11 +34,11 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       val testKit = AkkaStreamletTestKit(actorSystem, materializer)
       val src     = Source(testData)
       val in      = testKit.inletFromSource(testEgress.inlet, src)
-      //testKit.run(testEgress, in, () => {}) //FIXME - this would implicilty stop the streamlet execution, but mock validation ALWAYS fails (regardless of extra wait times) when using this
+      //testKit.run(testEgress, in, () => {}) //FIXME - this would implicitly stop the streamlet execution, but mock validation ALWAYS fails (regardless of extra wait times) when using this
       val streamlet = testKit.run(testEgress, List(in), List.empty)
       Await.result(streamlet.ready, 3 seconds)
 
-      //FIXME - how to give the Streamlet adquate time to process all messags
+      //FIXME - how to give the Streamlet adquate time to process all messages
       //Await.result(streamlet.completed, 10 seconds) //FIXME - Streamlet never completes - why?
 
       //FIXME - dirty hack to allow the Streamlet to do some actual processing! :(
@@ -59,7 +59,7 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       val streamlet = testKit.run(testEgress, List(in), List.empty)
       Await.result(streamlet.ready, 3 seconds)
 
-      //FIXME - how to give the Streamlet adquate time to process all messags
+      //FIXME - how to give the Streamlet adquate time to process all messages
       //Await.result(streamlet.completed, 10 seconds) //FIXME - Streamlet never completes - why?
 
       //FIXME - dirty hack to allow the Streamlet to do some actual processing! :(
@@ -80,7 +80,7 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
 //      val streamlet = testKit.run(testEgress, List(in), List.empty)
 //      Await.result(streamlet.ready, 3 seconds)
 //
-//      //FIXME - how to give the Streamlet adquate time to process all messags
+//      //FIXME - how to give the Streamlet adquate time to process all messages
 //      //Await.result(streamlet.completed, 10 seconds) //FIXME - Streamlet never completes - why?
 //
 //      //FIXME - dirty hack to allow the Streamlet to do some actual processing! :(
