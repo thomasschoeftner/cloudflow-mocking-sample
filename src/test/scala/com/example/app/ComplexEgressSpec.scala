@@ -1,11 +1,11 @@
 package com.example.app
 
 import scala.concurrent.duration._
-import akka.actor.ActorSystem
+import akka.actor.{ ActorRef, ActorSystem }
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
-import akka.testkit.TestKit
-import cloudflow.akkastream.testkit.scaladsl.AkkaStreamletTestKit
+import akka.testkit.{ TestKit, TestProbe }
+import cloudflow.akkastream.testkit.scaladsl.{ AkkaStreamletTestKit, Completed }
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfterAll, MustMatchers, WordSpec }
@@ -66,7 +66,7 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       Await.result(Future { Thread.sleep(1000) }, 2 seconds) // without this extra time, the mocks never get called and, hence, throw
     }
 
-    "call function mock method" in {
+    "call function mock" in {
       val testEgress = new ComplexEgress with MockedTransformFunc
       testEgress.transformFunc.expects(testData(0).id.reverse.toUpperCase).returning("pi").once
       testEgress.transformFunc.expects(testData(1).id.reverse.toUpperCase).returning("e").once
@@ -86,6 +86,19 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
 //      //FIXME - dirty hack to allow the Streamlet to do some actual processing! :(
 //      Await.result(Future { Thread.sleep(1000) }, 2 seconds) // without this extra time, the mocks never get called and, hence, throw
     }
+
+    "call probed function (insted of mocked)" in {
+      val testEgress = new ComplexEgress with ProbedTransformFunc
+      val testKit    = AkkaStreamletTestKit(actorSystem, materializer)
+      val src        = Source(testData)
+      val in         = testKit.inletFromSource(testEgress.inlet, src)
+      val streamlet  = testKit.run(testEgress, List(in), List.empty)
+      testEgress.probe.expectMsg(testData(0).id.reverse.toUpperCase)
+      testEgress.probe.expectMsg(testData(1).id.reverse.toUpperCase)
+      testEgress.probe.expectMsg(testData(2).id.reverse.toUpperCase)
+      testEgress.probe.expectMsg(testData(3).id.reverse.toUpperCase)
+      testEgress.probe.expectNoMessage()
+    }
   }
 
   trait MockedSyncTransformer {
@@ -101,5 +114,16 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
   trait MockedTransformFunc {
     self: ComplexEgress =>
     override val transformFunc = mockFunction[String, String]
+  }
+
+  trait ProbedTransformFunc {
+    self: ComplexEgress =>
+
+    val probe = TestProbe()
+
+    override val transformFunc = (s: String) => {
+      probe.ref ! s
+      s.toLowerCase
+    }
   }
 }
