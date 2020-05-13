@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import akka.testkit.TestKit
-import cloudflow.akkastream.testkit.scaladsl.{ AkkaStreamletTestKit, ConfigParameterValue }
+import cloudflow.akkastream.testkit.scaladsl.AkkaStreamletTestKit
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfterAll, MustMatchers, WordSpec }
@@ -14,6 +14,7 @@ import scala.concurrent.{ Await, ExecutionContext, Future }
 
 class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures with BeforeAndAfterAll with MockFactory {
   import scala.concurrent.ExecutionContext.Implicits.global
+
   private implicit val actorSystem: ActorSystem        = ActorSystem("test-system")
   private implicit val materializer: ActorMaterializer = ActorMaterializer()
 
@@ -30,9 +31,10 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       (testEgress.syncTransformer.transform _).expects(testData(2).id).returning("absolute zero").once
       (testEgress.syncTransformer.transform _).expects(testData(3).id).returning("speed-o-light").once
 
-      val testKit   = AkkaStreamletTestKit(actorSystem, materializer)
-      val src       = Source(testData)
-      val in        = testKit.inletFromSource(testEgress.inlet, src)
+      val testKit = AkkaStreamletTestKit(actorSystem, materializer)
+      val src     = Source(testData)
+      val in      = testKit.inletFromSource(testEgress.inlet, src)
+      //testKit.run(testEgress, in, () => {}) //FIXME - this would implicilty stop the streamlet execution, but mock validation ALWAYS fails (regardless of extra wait times) when using this
       val streamlet = testKit.run(testEgress, List(in), List.empty)
       Await.result(streamlet.ready, 3 seconds)
 
@@ -50,9 +52,10 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       (testEgress.asyncTransformer.transformAsync _).expects(testData(2).id.reverse).returning(Future("absolute zero")).once
       (testEgress.asyncTransformer.transformAsync _).expects(testData(3).id.reverse).returning(Future("speed-o-light")).once
 
-      val testKit   = AkkaStreamletTestKit(actorSystem, materializer)
-      val src       = Source(testData)
-      val in        = testKit.inletFromSource(testEgress.inlet, src)
+      val testKit = AkkaStreamletTestKit(actorSystem, materializer)
+      val src     = Source(testData)
+      val in      = testKit.inletFromSource(testEgress.inlet, src)
+      //testKit.run(testEgress, in, () => {}) //FIXME - this would implicitly stop the streamlet execution, but mock validation ALWAYS fails (regardless of extra wait times) when using this
       val streamlet = testKit.run(testEgress, List(in), List.empty)
       Await.result(streamlet.ready, 3 seconds)
 
@@ -70,17 +73,18 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       testEgress.transformFunc.expects(testData(2).id.reverse.toUpperCase).returning("absolute zero").once
       testEgress.transformFunc.expects(testData(3).id.reverse.toUpperCase).returning("speed-o-light").once
 
-      val testKit   = AkkaStreamletTestKit(actorSystem, materializer)
-      val src       = Source(testData)
-      val in        = testKit.inletFromSource(testEgress.inlet, src)
-      val streamlet = testKit.run(testEgress, List(in), List.empty)
-      Await.result(streamlet.ready, 3 seconds)
-
-      //FIXME - how to give the Streamlet adquate time to process all messags
-      //Await.result(streamlet.completed, 10 seconds) //FIXME - Streamlet never completes - why?
-
-      //FIXME - dirty hack to allow the Streamlet to do some actual processing! :(
-      Await.result(Future { Thread.sleep(1000) }, 2 seconds) // without this extra time, the mocks never get called and, hence, throw
+      val testKit = AkkaStreamletTestKit(actorSystem, materializer)
+      val src     = Source(testData)
+      val in      = testKit.inletFromSource(testEgress.inlet, src)
+      testKit.run(testEgress, in, () => {}) //FIXME - Why does this one work here, but not with object mocks (see above)?? - enabling it in the middle test will blow this one... very weird!!
+//      val streamlet = testKit.run(testEgress, List(in), List.empty)
+//      Await.result(streamlet.ready, 3 seconds)
+//
+//      //FIXME - how to give the Streamlet adquate time to process all messags
+//      //Await.result(streamlet.completed, 10 seconds) //FIXME - Streamlet never completes - why?
+//
+//      //FIXME - dirty hack to allow the Streamlet to do some actual processing! :(
+//      Await.result(Future { Thread.sleep(1000) }, 2 seconds) // without this extra time, the mocks never get called and, hence, throw
     }
   }
 
