@@ -1,5 +1,8 @@
 package com.example.app
 
+import akka.NotUsed
+import akka.kafka.ConsumerMessage.Committable
+import akka.stream.scaladsl.Sink
 import cloudflow.akkastream._
 import cloudflow.akkastream.scaladsl._
 import cloudflow.streamlets._
@@ -27,9 +30,12 @@ class ComplexEgress extends AkkaStreamlet {
 
   val transformFunc = (s: String) => s.toLowerCase
 
+  def sink[T](logic: RunnableGraphStreamletLogic): Sink[(T, Committable), NotUsed] =
+    logic.committableSink
+
   override def createLogic = new RunnableGraphStreamletLogic() {
     def runnableGraph =
-      sourceWithOffsetContext(inlet).via(flow).to(committableSink)
+      sourceWithOffsetContext(inlet).via(flow).to(sink(this))
 
     val flow = FlowWithCommittableContext[Data]
       .map { data =>
