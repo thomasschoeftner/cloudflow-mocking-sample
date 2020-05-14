@@ -1,10 +1,14 @@
 package com.example.app
 
+import akka.NotUsed
+
 import scala.concurrent.duration._
 import akka.actor.{ ActorRef, ActorSystem }
+import akka.kafka.ConsumerMessage.Committable
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{ Flow, Sink, Source }
 import akka.testkit.{ TestKit, TestProbe }
+import cloudflow.akkastream.scaladsl.RunnableGraphStreamletLogic
 import cloudflow.akkastream.testkit.scaladsl.{ AkkaStreamletTestKit, Completed }
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
@@ -127,5 +131,17 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       probe.ref ! s
       s.toLowerCase
     }
+  }
+
+  object ProbedSink {
+    case object Completed
+  }
+
+  trait ProbedSink {
+    self: ComplexEgress =>
+    val sinkProbe = TestProbe()
+
+    override def sink[T](logic: RunnableGraphStreamletLogic): Sink[(T, Committable), NotUsed] =
+      Flow[(T, Committable)].alsoTo(Sink.actorRef(sinkProbe.ref, ProbedSink.Completed)).to(logic.committableSink)
   }
 }
