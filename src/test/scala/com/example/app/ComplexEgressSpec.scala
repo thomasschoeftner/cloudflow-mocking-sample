@@ -71,7 +71,7 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
     }
 
     "call function mock" in {
-      val testEgress = new ComplexEgress with MockedTransformFunc
+      val testEgress = new ComplexEgress with MockedTransformFunc with ProbedSink
       testEgress.transformFunc.expects(testData(0).id.reverse.toUpperCase).returning("pi").once
       testEgress.transformFunc.expects(testData(1).id.reverse.toUpperCase).returning("e").once
       testEgress.transformFunc.expects(testData(2).id.reverse.toUpperCase).returning("absolute zero").once
@@ -80,8 +80,9 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       val testKit = AkkaStreamletTestKit(actorSystem, materializer)
       val src     = Source(testData)
       val in      = testKit.inletFromSource(testEgress.inlet, src)
-      testKit.run(testEgress, in, () => {}) //FIXME - Why does this one work here, but not with object mocks (see above)?? - enabling it in the middle test will blow this one... very weird!!
-//      val streamlet = testKit.run(testEgress, List(in), List.empty)
+//      testKit.run(testEgress, in, () => {}) //FIXME - Why does this one work here, but not with object mocks (see above)?? - enabling it in the middle test will blow this one... very weird!!
+      val streamlet = testKit.run(testEgress, List(in), List.empty)
+      testEgress.sinkProbe.expectMsg(13 seconds, ProbedSink.Completed)
 //      Await.result(streamlet.ready, 3 seconds)
 //
 //      //FIXME - how to give the Streamlet adquate time to process all messages
