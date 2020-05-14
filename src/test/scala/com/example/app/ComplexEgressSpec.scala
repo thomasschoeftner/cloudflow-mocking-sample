@@ -98,6 +98,8 @@ class ComplexEgressSpec extends WordSpec with MustMatchers with ScalaFutures wit
       testEgress.probe.expectMsg(testData(2).id.reverse.toUpperCase)
       testEgress.probe.expectMsg(testData(3).id.reverse.toUpperCase)
       testEgress.probe.expectNoMessage()
+      streamlet.stop()
+      Await.ready(streamlet.completed, 10 seconds) //actually not required because not mocks are wait for assertions in this test
     }
   }
 
